@@ -417,7 +417,7 @@
                     </div>
                     <div>
                         <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">Vault Balance</span>
-                        <h1 style="font-size: 14px; font-weight: 700;">Personal Hub</h1>
+                        <h1 style="font-size: 14px; font-weight: 700;">Azzer Wallet</h1>
                     </div>
                 </div>
 
@@ -632,6 +632,7 @@
             { id: 'gcash', name: 'GCash', balance: 2500.00, color: '#005CE6', iconText: 'GC' },
             { id: 'maribank', name: 'MariBank', balance: 15400.50, color: '#FF5722', iconText: 'MB' },
             { id: 'gotyme', name: 'GoTyme', balance: 8200.75, color: '#00D2C8', iconText: 'GT' },
+            { id: 'gotyme_savings', name: 'GoTyme Savings', balance: 10000.00, color: '#00A89E', iconText: 'GS' },
             { id: 'bpi', name: 'BPI', balance: 34100.00, color: '#B30006', iconText: 'BP' }
         ];
 
@@ -655,6 +656,12 @@
                 const privStored = SafeStorage.getItem('wallet_privacy');
 
                 accounts = accStored ? JSON.parse(accStored) : JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS));
+                
+                // Ensure GoTyme Savings is added if migrating from older local data
+                if (!accounts.some(a => a.id === 'gotyme_savings')) {
+                    accounts.splice(3, 0, { id: 'gotyme_savings', name: 'GoTyme Savings', balance: 10000.00, color: '#00A89E', iconText: 'GS' });
+                }
+
                 historyLogs = histStored ? JSON.parse(histStored) : [
                     { id: Date.now(), title: 'Wallet Initialized', amount: 0, type: 'info', category: 'System', date: 'Today', time: '12:00 PM', accountId: 'all' }
                 ];
