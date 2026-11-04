@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wallet Balance Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons for modern minimalist icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        bg: '#09090b',
+                        surface: '#121216',
+                        'surface-card': '#18181f',
+                        'surface-hover': '#22222b',
+                        'brand-gcash': '#005CE6',
+                        'brand-maribank': '#FF5722',
+                        'brand-gotyme': '#00D2C8',
+                        'brand-bpi': '#B30006',
+                    },
+                    borderRadius: {
+                        'm3': '24px',
+                        'm3-sm': '16px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar & mobile touch feel */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        body {
+            background-color: #09090b;
+            color: #f4f4f5;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            touch-action: manipulation;
+        }
+        /* Glassmorphism & sleek borders */
+        .glass-card {
+            background: rgba(24, 24, 31, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        .blur-balance {
+            filter: blur(8px);
+            transition: filter 0.25s ease;
+        }
+        /* Custom bottom sheet animation */
+        .modal-bg {
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .modal-content {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-hidden .modal-bg {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal-hidden .modal-content {
+            transform: translateY(100%);
+        }
+        /* Hide scrollbars for slick look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex justify-center bg-bg text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Mobile Screen Frame Container -->
+    <div class="w-full max-w-md min-h-screen flex flex-col justify-between pb-8 relative overflow-hidden">
+        
+        <!-- Header & Main Summary Section -->
+        <header class="p-6 pt-8 space-y-6">
+            <!-- Top App Bar -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700/60 flex items-center justify-center text-zinc-300">
+                        <i class="ph ph-wallet text-lg"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs uppercase tracking-wider font-semibold text-zinc-500">Vault Balance</span>
+                        <h1 class="text-sm font-bold text-zinc-200">Personal Hub</h1>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- Privacy Toggle Button -->
+                    <button id="privacyBtn" onclick="togglePrivacy()" aria-label="Toggle Privacy" 
+                        class="w-11 h-11 rounded-full bg-surface-card border border-white/5 hover:bg-surface-hover flex items-center justify-center text-zinc-400 active:scale-95 transition">
+                        <i id="privacyIcon" class="ph ph-eye text-xl"></i>
+                    </button>
+                    <!-- Settings/Reset Button -->
+                    <button onclick="confirmReset()" aria-label="Reset Data" 
+                        class="w-11 h-11 rounded-full bg-surface-card border border-white/5 hover:bg-surface-hover flex items-center justify-center text-zinc-400 active:scale-95 transition">
+                        <i class="ph ph-arrow-counter-clockwise text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Total Net Worth Card -->
+            <div class="glass-card rounded-m3 p-6 relative overflow-hidden shadow-2xl shadow-black/50">
+                <!-- Background Accent Glow -->
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-teal-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="relative z-10">
+                    <p class="text-xs font-medium text-zinc-400 mb-1">Total Net Worth</p>
+                    <div class="flex items-baseline justify-between">
+                        <h2 id="totalBalance" class="text-3xl font-extrabold tracking-tight text-white balance-text">
+                            ₱0.00
+                        </h2>
+                    </div>
+
+                    <!-- Visual Distribution Bar -->
+                    <div class="mt-5">
+                        <div class="flex justify-between items-center text-[11px] text-zinc-400 mb-2 font-medium">
+                            <span>Account Distribution</span>
+                            <span id="accountCount">4 Accounts</span>
+                        </div>
+                        <div id="distributionBar" class="h-2.5 w-full rounded-full bg-zinc-800/80 overflow-hidden flex gap-0.5">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="grid grid-cols-3 gap-2.5">
+                <button onclick="openModal('addTransactionModal')" 
+                    class="h-13 rounded-m3-sm bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 active:scale-95 transition shadow-lg shadow-emerald-500/10">
+                    <i class="ph-bold ph-plus text-base"></i>
+                    <span>Log Transaction</span>
+                </button>
+                <button onclick="openModal('quickUpdateModal')" 
+                    class="h-13 rounded-m3-sm bg-zinc-100 text-zinc-950 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 active:scale-95 transition shadow-lg shadow-white/5">
+                    <i class="ph-bold ph-pencil-simple text-base"></i>
+                    <span>Update All</span>
+                </button>
+                <button onclick="openModal('transferModal')" 
+                    class="h-13 rounded-m3-sm bg-surface-card border border-white/10 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 hover:bg-surface-hover active:scale-95 transition">
+                    <i class="ph-bold ph-arrows-left-right text-base text-indigo-400"></i>
+                    <span>Transfer</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Accounts List Container -->
+        <main class="px-6 flex-1 space-y-5">
+            <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-zinc-400 px-1">
+                <span>Accounts</span>
+                <span class="text-[10px] text-zinc-400 lowercase font-normal">Tap card to edit</span>
+            </div>
+
+            <div id="accountsList" class="space-y-3">
+                <!-- Account cards rendered dynamically by JS -->
+            </div>
+
+            <!-- Transaction History Section -->
+            <div class="pt-2 space-y-3">
+                <div class="flex items-center justify-between px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400">Transaction History</span>
+                        <span id="txCountBadge" class="text-[10px] bg-zinc-800 text-zinc-400 font-bold px-2 py-0.5 rounded-full border border-white/5">0</span>
+                    </div>
+                    <button onclick="clearHistory()" class="text-[11px] text-zinc-500 hover:text-rose-400 capitalize font-medium transition">Clear History</button>
+                </div>
+
+                <!-- Transaction Filters -->
+                <div class="space-y-2">
+                    <!-- Category / Type Filter Tabs -->
+                    <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+                        <button onclick="setTxFilter('all')" id="filter-all" class="tx-filter-btn active-filter px-3 py-1.5 rounded-full font-semibold transition border border-white/10 text-zinc-300">All</button>
+                        <button onclick="setTxFilter('income')" id="filter-income" class="tx-filter-btn px-3 py-1.5 rounded-full font-semibold transition border border-white/5 text-zinc-500 hover:text-zinc-300">Income</button>
+                        <button onclick="setTxFilter('expense')" id="filter-expense" class="tx-filter-btn px-3 py-1.5 rounded-full font-semibold transition border border-white/5 text-zinc-500 hover:text-zinc-300">Expense</button>
+                        <button onclick="setTxFilter('transfer')" id="filter-transfer" class="tx-filter-btn px-3 py-1.5 rounded-full font-semibold transition border border-white/5 text-zinc-500 hover:text-zinc-300">Transfer</button>
+                    </div>
+                    
+                    <!-- Account Filter Dropdown -->
+                    <div class="flex items-center justify-between text-xs px-1">
+                        <span class="text-zinc-500 text-[11px]">Filter by Account:</span>
+                        <select id="txAccountFilter" onchange="renderHistory()" class="bg-surface-card border border-white/10 text-zinc-300 rounded-lg px-2 py-1 text-xs focus:outline-none">
+                            <option value="all">All Accounts</option>
+                            <option value="gcash">GCash</option>
+                            <option value="maribank">MariBank</option>
+                            <option value="gotyme">GoTyme</option>
+                            <option value="bpi">BPI</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- History Log Feed -->
+                <div id="historyList" class="space-y-2.5 max-h-80 overflow-y-auto no-scrollbar pt-1">
+                    <!-- Dynamic transaction cards -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Dynamic Modals Container -->
+
+        <!-- 0. ADD MANUAL TRANSACTION MODAL -->
+        <div id="addTransactionModal" class="fixed inset-0 z-50 flex items-end justify-center modal-hidden">
+            <div class="modal-bg fixed inset-0 bg-black/70 backdrop-blur-xs" onclick="closeModal('addTransactionModal')"></div>
+            <div class="modal-content w-full max-w-md bg-surface border-t border-white/10 rounded-t-m3 p-6 space-y-4 relative z-10 max-h-[90vh] overflow-y-auto no-scrollbar">
+                <div class="w-12 h-1.5 bg-zinc-700 rounded-full mx-auto mb-1 opacity-60"></div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-white">Log Transaction</h3>
+                        <p class="text-xs text-zinc-400">Record income or spending</p>
+                    </div>
+                    <button onclick="closeModal('addTransactionModal')" class="text-zinc-400 hover:text-white p-2">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Income / Expense Segmented Control -->
+                <div class="grid grid-cols-2 gap-2 p-1 bg-surface-card rounded-m3-sm border border-white/5">
+                    <button type="button" id="typeExpenseBtn" onclick="setTxTypeInput('expense')" 
+                        class="py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                        <i class="ph-bold ph-arrow-down-left"></i> Expense
+                    </button>
+                    <button type="button" id="typeIncomeBtn" onclick="setTxTypeInput('income')" 
+                        class="py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition text-zinc-400 border border-transparent hover:text-zinc-200">
+                        <i class="ph-bold ph-arrow-up-right"></i> Income
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <!-- Amount Input -->
+                    <div>
+                        <label class="text-xs font-medium text-zinc-400 block mb-1">Amount (PHP)</label>
+                        <div class="relative flex items-center">
+                            <span class="absolute left-4 text-zinc-400 font-semibold text-lg">₱</span>
+                            <input type="number" id="txAmountInput" step="0.01" pattern="[0-9]*" inputmode="decimal" placeholder="0.00"
+                                class="w-full bg-surface-card border border-white/10 rounded-m3-sm py-3 pl-10 pr-4 text-white font-bold text-lg focus:outline-none focus:border-indigo-500 transition">
+                        </div>
+                    </div>
+
+                    <!-- Target Account Select -->
+                    <div>
+                        <label class="text-xs font-medium text-zinc-400 block mb-1">Account</label>
+                        <select id="txAccountSelect" class="w-full bg-surface-card border border-white/10 rounded-m3-sm p-3 text-white font-medium focus:outline-none focus:border-indigo-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Category Selector -->
+                    <div>
+                        <label class="text-xs font-medium text-zinc-400 block mb-1">Category</label>
+                        <select id="txCategorySelect" class="w-full bg-surface-card border border-white/10 rounded-m3-sm p-3 text-white font-medium focus:outline-none focus:border-indigo-500">
+                            <option value="Food & Dining">🍔 Food & Dining</option>
+                            <option value="Bills & Utilities">⚡ Bills & Utilities</option>
+                            <option value="Shopping & Retail">🛍️ Shopping & Retail</option>
+                            <option value="Salary & Income">💼 Salary & Income</option>
+                            <option value="Transportation">🚗 Transportation</option>
+                            <option value="Subscriptions">🍿 Subscriptions</option>
+                            <option value="Savings">🏦 Savings</option>
+                            <option value="General">🏷️ General / Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Note Input -->
+                    <div>
+                        <label class="text-xs font-medium text-zinc-400 block mb-1">Note / Description (Optional)</label>
+                        <input type="text" id="txNoteInput" placeholder="e.g., Grocery store, Coffee..." 
+                            class="w-full bg-surface-card border border-white/10 rounded-m3-sm py-3 px-4 text-white text-sm focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+                </div>
+
+                <button onclick="submitManualTransaction()" 
+                    class="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold rounded-m3-sm active:scale-95 transition mt-2">
+                    Save Transaction
+                </button>
+            </div>
+        </div>
+
+        <!-- 1. EDIT SINGLE ACCOUNT MODAL -->
+        <div id="singleEditModal" class="fixed inset-0 z-50 flex items-end justify-center modal-hidden">
+            <div class="modal-bg fixed inset-0 bg-black/70 backdrop-blur-xs" onclick="closeModal('singleEditModal')"></div>
+            <div class="modal-content w-full max-w-md bg-surface border-t border-white/10 rounded-t-m3 p-6 space-y-5 relative z-10">
+                <div class="w-12 h-1.5 bg-zinc-700 rounded-full mx-auto mb-2 opacity-60"></div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div id="editAccBadge" class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm"></div>
+                        <div>
+                            <h3 id="editAccTitle" class="text-base font-bold text-white">Edit Balance</h3>
+                            <p class="text-xs text-zinc-400">Directly set new balance</p>
+                        </div>
+                    </div>
+                    <button onclick="closeModal('singleEditModal')" class="text-zinc-400 hover:text-white p-2">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-medium text-zinc-400">New Balance (PHP)</label>
+                    <div class="relative flex items-center">
+                        <span class="absolute left-4 text-zinc-400 font-semibold text-lg">₱</span>
+                        <input type="number" id="singleEditInput" step="0.01" pattern="[0-9]*" inputmode="decimal"
+                            class="w-full bg-surface-card border border-white/10 rounded-m3-sm py-3.5 pl-10 pr-4 text-white font-bold text-lg focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+                </div>
+
+                <button onclick="saveSingleBalance()" 
+                    class="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-m3-sm active:scale-95 transition">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. QUICK UPDATE ALL MODAL -->
+        <div id="quickUpdateModal" class="fixed inset-0 z-50 flex items-end justify-center modal-hidden">
+            <div class="modal-bg fixed inset-0 bg-black/70 backdrop-blur-xs" onclick="closeModal('quickUpdateModal')"></div>
+            <div class="modal-content w-full max-w-md bg-surface border-t border-white/10 rounded-t-m3 p-6 space-y-5 relative z-10 max-h-[85vh] overflow-y-auto no-scrollbar">
+                <div class="w-12 h-1.5 bg-zinc-700 rounded-full mx-auto mb-2 opacity-60"></div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-white">Update Balances</h3>
+                        <p class="text-xs text-zinc-400">Quickly adjust balances across accounts</p>
+                    </div>
+                    <button onclick="closeModal('quickUpdateModal')" class="text-zinc-400 hover:text-white p-2">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+
+                <form id="quickUpdateForm" onsubmit="saveAllBalances(event)" class="space-y-4">
+                    <div id="quickInputsContainer" class="space-y-3">
+                        <!-- Populated by JS -->
+                    </div>
+                    <button type="submit" 
+                        class="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-m3-sm active:scale-95 transition mt-4">
+                        Update All Balances
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 3. TRANSFER / MOVE FUNDS MODAL -->
+        <div id="transferModal" class="fixed inset-0 z-50 flex items-end justify-center modal-hidden">
+            <div class="modal-bg fixed inset-0 bg-black/70 backdrop-blur-xs" onclick="closeModal('transferModal')"></div>
+            <div class="modal-content w-full max-w-md bg-surface border-t border-white/10 rounded-t-m3 p-6 space-y-5 relative z-10">
+                <div class="w-12 h-1.5 bg-zinc-700 rounded-full mx-auto mb-2 opacity-60"></div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-white">Move / Transfer Funds</h3>
+                        <p class="text-xs text-zinc-400">Shift amount between your accounts</p>
+                    </div>
+                    <button onclick="closeModal('transferModal')" class="text-zinc-400 hover:text-white p-2">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- From Account -->
+                    <div>
+                        <label class="text-xs font-medium text-zinc-400 block mb-1">From Account</label>
+                        <select id="transferFrom" class="w-full bg-surface-card border border-white/10 rounded-m3-sm p-3.5 text-white font-medium focus:outline-none focus:border-indigo-500">
+                            <!-- Dynamic -->
+                        </select>
+                    </div>
+
+                    <!-- Swap Icon -->
+                    <div class="flex justify-center -my-2">
+                        <div class="w-8 h-8 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center text-zinc-400">
+                            <i class="ph-bold ph-arrow-down text-sm"></i>
+                        </div>
+                    </div>
+
+                    <!-- To Account -->
+                    <div>
+                        <label class="text-xs font-medium text-zinc-400 block mb-1">To Account</label>
+                        <select id="transferTo" class="w-full bg-surface-card border border-white/10 rounded-m3-sm p-3.5 text-white font-medium focus:outline-none focus:border-indigo-500">
+                            <!-- Dynamic -->
+                        </select>
+                    </div>
+
+                    <!-- Amount -->
+                    <div>
+                        <label class="text-xs font-medium text-zinc-400 block mb-1">Transfer Amount (PHP)</label>
+                        <div class="relative flex items-center">
+                            <span class="absolute left-4 text-zinc-400 font-semibold text-lg">₱</span>
+                            <input type="number" id="transferAmount" step="0.01" pattern="[0-9]*" inputmode="decimal" placeholder="0.00"
+                                class="w-full bg-surface-card border border-white/10 rounded-m3-sm py-3.5 pl-10 pr-4 text-white font-bold text-lg focus:outline-none focus:border-indigo-500 transition">
+                        </div>
+                    </div>
+
+                    <button onclick="executeTransfer()" 
+                        class="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-m3-sm active:scale-95 transition">
+                        Confirm Transfer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Notification Toast -->
+        <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-zinc-800 text-zinc-100 border border-white/10 px-4 py-2.5 rounded-full text-xs font-semibold shadow-xl opacity-0 transition-opacity duration-300 pointer-events-none flex items-center gap-2">
+            <i class="ph-bold ph-check-circle text-emerald-400 text-sm"></i>
+            <span id="toastMsg">Updated successfully</span>
+        </div>
+
+    </div>
+
+    <!-- Application Core Script -->
+    <script>
+        // Initial Account State Definition
+        const DEFAULT_ACCOUNTS = [
+            { id: 'gcash', name: 'GCash', balance: 2500.00, color: '#005CE6', textColor: 'text-blue-400', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/20', icon: 'ph-wallet' },
+            { id: 'maribank', name: 'MariBank', balance: 15400.50, color: '#FF5722', textColor: 'text-orange-400', bgColor: 'bg-orange-500/10', borderColor: 'border-orange-500/20', icon: 'ph-bank' },
+            { id: 'gotyme', name: 'GoTyme', balance: 8200.75, color: '#00D2C8', textColor: 'text-teal-400', bgColor: 'bg-teal-500/10', borderColor: 'border-teal-500/20', icon: 'ph-credit-card' },
+            { id: 'bpi', name: 'BPI', balance: 34100.00, color: '#B30006', textColor: 'text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20', icon: 'ph-buildings' }
+        ];
+
+        // State variables
+        let accounts = [];
+        let historyLogs = [];
+        let isPrivacyHidden = false;
+        let activeEditAccountId = null;
+        let activeTxType = 'expense'; // 'expense' or 'income'
+        let currentTxFilter = 'all';  // 'all', 'income', 'expense', 'transfer'
+
+        // Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFromStorage();
+            renderApp();
+        });
+
+        // Load data from LocalStorage
+        function loadFromStorage() {
+            const storedAccounts = localStorage.getItem('wallet_accounts');
+            const storedHistory = localStorage.getItem('wallet_history');
+            const storedPrivacy = localStorage.getItem('wallet_privacy');
+
+            accounts = storedAccounts ? JSON.parse(storedAccounts) : DEFAULT_ACCOUNTS;
+            historyLogs = storedHistory ? JSON.parse(storedHistory) : [
+                { id: 1, title: 'Tracker Initialized', note: 'System setup', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), date: new Date().toLocaleDateString([], {month: 'short', day: 'numeric'}), amount: 0, type: 'info', category: 'System', accountId: 'all' }
+            ];
+            isPrivacyHidden = storedPrivacy === 'true';
+        }
+
+        // Save data to LocalStorage
+        function saveToStorage() {
+            localStorage.setItem('wallet_accounts', JSON.stringify(accounts));
+            localStorage.setItem('wallet_history', JSON.stringify(historyLogs));
+            localStorage.setItem('wallet_privacy', isPrivacyHidden);
+        }
+
+        // Format Currency Helper
+        function formatPHP(amount) {
+            return '₱' + Number(amount).toLocaleString('en-PH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        // Render Application State
+        function renderApp() {
+            renderSummary();
+            renderAccountsList();
+            renderHistory();
+            applyPrivacyState();
+        }
+
+        // Calculate and Render Net Worth & Distribution
+        function renderSummary() {
+            const total = accounts.reduce((acc, item) => acc + item.balance, 0);
+            const totalEl = document.getElementById('totalBalance');
+            totalEl.textContent = formatPHP(total);
+
+            // Distribution bar
+            const distBar = document.getElementById('distributionBar');
+            distBar.innerHTML = '';
+
+            accounts.forEach(acc => {
+                const percentage = total > 0 ? ((acc.balance / total) * 100).toFixed(1) : 0;
+                if (percentage > 0) {
+                    const segment = document.createElement('div');
+                    segment.className = 'h-full transition-all duration-500';
+                    segment.style.width = `${percentage}%`;
+                    segment.style.backgroundColor = acc.color;
+                    segment.title = `${acc.name}: ${percentage}%`;
+                    distBar.appendChild(segment);
+                }
+            });
+        }
+
+        // Render Account Cards
+        function renderAccountsList() {
+            const container = document.getElementById('accountsList');
+            container.innerHTML = '';
+
+            accounts.forEach(acc => {
+                const card = document.createElement('div');
+                card.className = `glass-card p-4 rounded-m3-sm flex items-center justify-between cursor-pointer hover:bg-surface-hover active:scale-[0.98] transition border-l-4`;
+                card.style.borderLeftColor = acc.color;
+                card.onclick = () => openSingleEdit(acc.id);
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-m3-sm flex items-center justify-center font-bold text-xl" 
+                             style="background-color: ${acc.color}15; color: ${acc.color}">
+                            <i class="ph ${acc.icon}"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">${acc.name}</h4>
+                            <span class="text-[11px] text-zinc-500 font-medium">Tap to edit</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-base font-extrabold text-white tracking-tight balance-text">
+                            ${formatPHP(acc.balance)}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Render Audit Logs / Rich Transactions
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            const accountFilter = document.getElementById('txAccountFilter').value;
+            container.innerHTML = '';
+
+            // Apply Filters
+            let filteredLogs = historyLogs.filter(log => {
+                const matchesType = currentTxFilter === 'all' || log.type === currentTxFilter;
+                const matchesAccount = accountFilter === 'all' || log.accountId === accountFilter || log.toAccountId === accountFilter;
+                return matchesType && matchesAccount;
+            });
+
+            document.getElementById('txCountBadge').textContent = filteredLogs.length;
+
+            if (filteredLogs.length === 0) {
+                container.innerHTML = `<div class="text-xs text-zinc-600 text-center py-6 border border-dashed border-white/5 rounded-m3-sm">No transactions found for this filter.</div>`;
+                return;
+            }
+
+            filteredLogs.forEach(log => {
+                const item = document.createElement('div');
+                item.className = 'relative group glass-card p-3 rounded-m3-sm border border-white/5 flex items-center justify-between gap-3 hover:bg-surface-hover transition';
+
+                // Category & Icon setup
+                let badgeColor = 'bg-zinc-800 text-zinc-400 border-zinc-700';
+                let iconClass = 'ph-arrow-circle-right';
+                let sign = '';
+                let amountColor = 'text-zinc-300';
+
+                if (log.type === 'income') {
+                    badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                    iconClass = 'ph-arrow-down-left';
+                    sign = '+';
+                    amountColor = 'text-emerald-400';
+                } else if (log.type === 'expense') {
+                    badgeColor = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+                    iconClass = 'ph-arrow-up-right';
+                    sign = '-';
+                    amountColor = 'text-rose-400';
+                } else if (log.type === 'transfer') {
+                    badgeColor = 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+                    iconClass = 'ph-arrows-left-right';
+                    amountColor = 'text-indigo-300';
+                } else if (log.type === 'update') {
+                    badgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                    iconClass = 'ph-pencil-simple';
+                }
+
+                // Account label helper
+                const accObj = accounts.find(a => a.id === log.accountId);
+                const accName = accObj ? accObj.name : '';
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${badgeColor}">
+                            <i class="ph-bold ${iconClass} text-base"></i>
+                        </div>
+                        <div class="truncate">
+                            <div class="flex items-center gap-1.5">
+                                <h5 class="text-xs font-bold text-white truncate">${log.title}</h5>
+                                ${log.category ? `<span class="text-[9px] bg-zinc-800/80 text-zinc-400 px-1.5 py-0.2 rounded border border-white/5 font-medium shrink-0">${log.category}</span>` : ''}
+                            </div>
+                            <p class="text-[10px] text-zinc-400 truncate mt-0.5">
+                                ${log.note ? `${log.note} • ` : ''}${log.date || ''} ${log.time}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="text-right shrink-0 flex items-center gap-2">
+                        <div>
+                            ${log.amount !== 0 ? `<div class="text-xs font-extrabold ${amountColor} balance-text">${sign}${formatPHP(log.amount)}</div>` : ''}
+                            <div class="text-[9px] text-zinc-500 uppercase font-semibold">${accName}</div>
+                        </div>
+                        <button onclick="deleteTransaction(${log.id})" title="Delete entry" class="text-zinc-600 hover:text-rose-400 p-1 opacity-60 hover:opacity-100 transition">
+                            <i class="ph ph-trash text-sm"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Transaction Filter Switcher
+        function setTxFilter(type) {
+            currentTxFilter = type;
+            document.querySelectorAll('.tx-filter-btn').forEach(btn => {
+                btn.classList.remove('active-filter', 'text-zinc-300', 'border-white/10');
+                btn.classList.add('text-zinc-500', 'border-white/5');
+            });
+
+            const activeBtn = document.getElementById(`filter-${type}`);
+            if (activeBtn) {
+                activeBtn.classList.add('active-filter', 'text-zinc-300', 'border-white/10');
+                activeBtn.classList.remove('text-zinc-500');
+            }
+
+            renderHistory();
+        }
+
+        // Manual Transaction Form Logic
+        function setTxTypeInput(type) {
+            activeTxType = type;
+            const expBtn = document.getElementById('typeExpenseBtn');
+            const incBtn = document.getElementById('typeIncomeBtn');
+
+            if (type === 'expense') {
+                expBtn.className = 'py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition bg-rose-500/20 text-rose-400 border border-rose-500/30';
+                incBtn.className = 'py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition text-zinc-400 border border-transparent hover:text-zinc-200';
+            } else {
+                incBtn.className = 'py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                expBtn.className = 'py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition text-zinc-400 border border-transparent hover:text-zinc-200';
+            }
+        }
+
+        function populateTxAccountSelect() {
+            const select = document.getElementById('txAccountSelect');
+            select.innerHTML = '';
+            accounts.forEach(acc => {
+                select.innerHTML += `<option value="${acc.id}">${acc.name} (${formatPHP(acc.balance)})</option>`;
+            });
+        }
+
+        function submitManualTransaction() {
+            const amount = parseFloat(document.getElementById('txAmountInput').value);
+            const accountId = document.getElementById('txAccountSelect').value;
+            const category = document.getElementById('txCategorySelect').value;
+            const note = document.getElementById('txNoteInput').value.trim();
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast('Please enter a valid amount');
+                return;
+            }
+
+            const acc = accounts.find(a => a.id === accountId);
+            if (!acc) return;
+
+            if (activeTxType === 'expense') {
+                acc.balance -= amount;
+                logHistory(`${acc.name} Expense`, amount, 'expense', category, note, accountId);
+            } else {
+                acc.balance += amount;
+                logHistory(`${acc.name} Income`, amount, 'income', category, note, accountId);
+            }
+
+            saveToStorage();
+            renderApp();
+            closeModal('addTransactionModal');
+            showToast(`Transaction logged for ${acc.name}`);
+
+            // Reset inputs
+            document.getElementById('txAmountInput').value = '';
+            document.getElementById('txNoteInput').value = '';
+        }
+
+        // Delete Single Transaction
+        function deleteTransaction(id) {
+            const index = historyLogs.findIndex(l => l.id === id);
+            if (index !== -1) {
+                historyLogs.splice(index, 1);
+                saveToStorage();
+                renderHistory();
+                showToast('Transaction removed');
+            }
+        }
+
+        // Privacy Blur Toggle
+        function togglePrivacy() {
+            isPrivacyHidden = !isPrivacyHidden;
+            applyPrivacyState();
+            saveToStorage();
+        }
+
+        function applyPrivacyState() {
+            const balanceElements = document.querySelectorAll('.balance-text');
+            const icon = document.getElementById('privacyIcon');
+
+            if (isPrivacyHidden) {
+                balanceElements.forEach(el => el.classList.add('blur-balance'));
+                icon.className = 'ph ph-eye-slash text-xl text-indigo-400';
+            } else {
+                balanceElements.forEach(el => el.classList.remove('blur-balance'));
+                icon.className = 'ph ph-eye text-xl';
+            }
+        }
+
+        // Modal Controls
+        function openModal(modalId) {
+            if (modalId === 'addTransactionModal') populateTxAccountSelect();
+            if (modalId === 'quickUpdateModal') prepareQuickUpdateForm();
+            if (modalId === 'transferModal') prepareTransferForm();
+            
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('modal-hidden');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('modal-hidden');
+        }
+
+        // 1. Single Account Edit Trigger
+        function openSingleEdit(accId) {
+            activeEditAccountId = accId;
+            const acc = accounts.find(a => a.id === accId);
+            if (!acc) return;
+
+            const badge = document.getElementById('editAccBadge');
+            badge.style.backgroundColor = acc.color;
+            badge.innerHTML = `<i class="ph ${acc.icon} text-lg"></i>`;
+            
+            document.getElementById('editAccTitle').textContent = `Edit ${acc.name}`;
+            document.getElementById('singleEditInput').value = acc.balance;
+
+            openModal('singleEditModal');
+        }
+
+        function saveSingleBalance() {
+            const inputVal = parseFloat(document.getElementById('singleEditInput').value);
+            if (isNaN(inputVal) || inputVal < 0) {
+                showToast('Please enter a valid amount');
+                return;
+            }
+
+            const acc = accounts.find(a => a.id === activeEditAccountId);
+            if (acc) {
+                const diff = inputVal - acc.balance;
+                acc.balance = inputVal;
+                
+                logHistory(`Manual Adjustment`, Math.abs(diff), 'update', 'Adjustment', `Set balance to ${formatPHP(inputVal)}`, acc.id);
+                saveToStorage();
+                renderApp();
+                closeModal('singleEditModal');
+                showToast(`${acc.name} balance updated`);
+            }
+        }
+
+        // 2. Quick Update All Form
+        function prepareQuickUpdateForm() {
+            const container = document.getElementById('quickInputsContainer');
+            container.innerHTML = '';
+
+            accounts.forEach(acc => {
+                const row = document.createElement('div');
+                row.className = 'space-y-1';
+                row.innerHTML = `
+                    <label class="text-xs font-semibold text-zinc-400 flex items-center justify-between">
+                        <span>${acc.name}</span>
+                        <span class="text-[10px] text-zinc-500 font-normal">Current: ${formatPHP(acc.balance)}</span>
+                    </label>
+                    <div class="relative flex items-center">
+                        <span class="absolute left-3.5 text-zinc-500 font-semibold text-sm">₱</span>
+                        <input type="number" step="0.01" pattern="[0-9]*" inputmode="decimal" data-acc-id="${acc.id}" value="${acc.balance}"
+                            class="w-full bg-surface-card border border-white/10 rounded-m3-sm py-2.5 pl-9 pr-3 text-white font-bold text-sm focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function saveAllBalances(e) {
+            e.preventDefault();
+            const inputs = document.querySelectorAll('#quickInputsContainer input');
+            let updated = false;
+
+            inputs.forEach(input => {
+                const id = input.getAttribute('data-acc-id');
+                const val = parseFloat(input.value);
+                const acc = accounts.find(a => a.id === id);
+                if (acc && !isNaN(val) && val !== acc.balance) {
+                    acc.balance = val;
+                    logHistory(`${acc.name} Update`, Math.abs(val - acc.balance), 'update', 'Adjustment', `Bulk balance update`, acc.id);
+                    updated = true;
+                }
+            });
+
+            if (updated) {
+                saveToStorage();
+                renderApp();
+                showToast('All balances updated');
+            }
+            closeModal('quickUpdateModal');
+        }
+
+        // 3. Transfer / Fund Movement
+        function prepareTransferForm() {
+            const fromSelect = document.getElementById('transferFrom');
+            const toSelect = document.getElementById('transferTo');
+            document.getElementById('transferAmount').value = '';
+
+            fromSelect.innerHTML = '';
+            toSelect.innerHTML = '';
+
+            accounts.forEach(acc => {
+                fromSelect.innerHTML += `<option value="${acc.id}">${acc.name} (${formatPHP(acc.balance)})</option>`;
+                toSelect.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+            });
+
+            if (accounts.length > 1) {
+                toSelect.selectedIndex = 1;
+            }
+        }
+
+        function executeTransfer() {
+            const fromId = document.getElementById('transferFrom').value;
+            const toId = document.getElementById('transferTo').value;
+            const amount = parseFloat(document.getElementById('transferAmount').value);
+
+            if (fromId === toId) {
+                showToast('Select different accounts');
+                return;
+            }
+
+            if (isNaN(amount) || amount <= 0) {
+                showToast('Enter valid transfer amount');
+                return;
+            }
+
+            const fromAcc = accounts.find(a => a.id === fromId);
+            const toAcc = accounts.find(a => a.id === toId);
+
+            if (fromAcc.balance < amount) {
+                showToast(`Insufficient balance in ${fromAcc.name}`);
+                return;
+            }
+
+            fromAcc.balance -= amount;
+            toAcc.balance += amount;
+
+            logHistory(`${fromAcc.name} ➔ ${toAcc.name}`, amount, 'transfer', 'Transfer', `Fund movement`, fromAcc.id, toAcc.id);
+            saveToStorage();
+            renderApp();
+            closeModal('transferModal');
+            showToast('Transfer completed');
+        }
+
+        // Enhanced History Logging Helper
+        function logHistory(title, amount, type, category = 'General', note = '', accountId = 'all', toAccountId = null) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+            historyLogs.unshift({
+                id: Date.now(),
+                title: title,
+                time: timeStr,
+                date: dateStr,
+                amount: amount,
+                type: type, // 'income', 'expense', 'transfer', 'update', 'info'
+                category: category,
+                note: note,
+                accountId: accountId,
+                toAccountId: toAccountId
+            });
+
+            if (historyLogs.length > 100) historyLogs.pop();
+        }
+
+        function clearHistory() {
+            if (confirm("Clear all transaction history?")) {
+                historyLogs = [];
+                saveToStorage();
+                renderHistory();
+                showToast('History cleared');
+            }
+        }
+
+        // Factory Reset Data
+        function confirmReset() {
+            if (window.confirm("Reset all account balances and transaction history to default?")) {
+                accounts = JSON.parse(JSON.stringify(DEFAULT_ACCOUNTS));
+                historyLogs = [{ id: Date.now(), title: 'Tracker Reset', note: 'Factory defaults restored', time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), date: new Date().toLocaleDateString([], {month: 'short', day: 'numeric'}), amount: 0, type: 'info', category: 'System', accountId: 'all' }];
+                saveToStorage();
+                renderApp();
+                showToast('Reset to defaults');
+            }
+        }
+
+        // Toast Feedback System
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
